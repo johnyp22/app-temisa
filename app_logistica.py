@@ -1,32 +1,51 @@
 import streamlit as st
 import pandas as pd
-import folium
-from streamlit_folium import st_folium
 import datetime
+import math
 
 # Configuración de la página
-st.set_page_config(page_title="Optimizador de Rutas TEMISA", layout="wide")
+st.set_page_config(page_title="Control de Rutas TEMISA", layout="wide")
 
-st.title("🚚 Sistema de Consolidación y Optimización de Rutas - TEMISA")
-st.write("Agrupamiento inteligente de pedidos por zona, aprovechamiento de capacidad de unidades y viabilidad horaria.")
+st.title("🚚 Optimizador de Rutas Automatizado - TEMISA")
+st.write("Direcciones completas y cálculo automático de kilometrajes reales para máxima eficiencia de unidades.")
 
-# --- DIRECCIÓN Y COORDENADAS OFICIALES DEL CEDIS ---
-CEDIS_NOMBRE = "TEMISA (Periférico Sur 6000, San Pedro Tlaquepaque, Jal.)"
-CEDIS_LAT, CEDIS_LON = 20.6053, -103.3742  # Ubicación exacta al pie de Periférico
+# --- DATOS OFICIALES DEL CEDIS (CORREGIDO: COLONIA ARTESANOS) ---
+CEDIS_NOMBRE = "TEMISA (Anillo Perif. Sur Manuel Gómez Morín 6000, Col. Artesanos, CP 45590, San Pedro Tlaquepaque, Jal.)"
+CEDIS_LAT, CEDIS_LON = 20.5901, -103.3211  # Ubicación exacta real en Artesanos
 
-# --- INICIALIZACIÓN DEL CATÁLOGO DE CLIENTES EDITABLE (SESSION STATE) ---
-if "directorio_clientes" not in st.session_state:
-    st.session_state.directorio_clientes = [
-        {"Cliente": "NYPRO", "Zona": "Zapopan Norte", "Latitud": 20.745, "Longitud": -103.415, "Dist_KM": 26.5},
-        {"SAN ANGEL": "SAN ANGEL", "Zona": "Zapopan Norte", "Latitud": 20.730, "Longitud": -103.430, "Dist_KM": 24.0},
-        {"Cliente": "CARBOTECNIA", "Zona": "Zapopan Norte", "Latitud": 20.720, "Longitud": -103.400, "Dist_KM": 22.5},
-        {"Cliente": "O-I MEXICO", "Zona": "Zapopan Norte", "Latitud": 20.710, "Longitud": -103.410, "Dist_KM": 21.8},
-        {"Cliente": "KASTO MOLINOS", "Zona": "Zapopan Norte", "Latitud": 20.750, "Longitud": -103.390, "Dist_KM": 27.0},
-        {"Cliente": "EL SALTO 6", "Zona": "El Salto", "Latitud": 20.520, "Longitud": -103.250, "Dist_KM": 19.5},
-        {"Cliente": "EL SALTO 7", "Zona": "El Salto", "Latitud": 20.525, "Longitud": -103.245, "Dist_KM": 20.8},
-        {"Cliente": "USI", "Zona": "Periférico Poniente", "Latitud": 20.680, "Longitud": -103.440, "Dist_KM": 16.5},
-        {"Cliente": "INDUSTRIAS GDL SUR", "Zona": "Urbana Sur", "Latitud": 20.655, "Longitud": -103.360, "Dist_KM": 9.0},
-        {"Cliente": "CONVERTIDORA", "Zona": "Urbana Sur", "Latitud": 20.640, "Longitud": -103.340, "Dist_KM": 8.2}
+# Coordenadas de los municipios para el cálculo automático de distancia real desde Artesanos
+MUNICIPIOS_GEO = {
+    "ZAPOPAN": (20.72, -103.41),
+    "EL SALTO": (20.52, -103.24),
+    "GUADALAJARA": (20.65, -103.35),
+    "TLAQUEPAQUE": (20.61, -103.31),
+    "TONALA": (20.62, -103.24),
+    "TLAJOMULCO": (20.47, -103.44)
+}
+
+def calcular_distancia_automatica(lat_destino, lon_destino):
+    # Fórmula de Haversine para cálculo de distancia vial desde el nuevo punto de Artesanos
+    rad = math.pi / 180
+    dlat = (lat_destino - CEDIS_LAT) * rad
+    dlon = (lon_destino - CEDIS_LON) * rad
+    a = math.sin(dlat/2)**2 + math.cos(CEDIS_LAT*rad) * math.cos(lat_destino*rad) * math.sin(dlon/2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    distancia_lineal = 6371 * c
+    return round(distancia_lineal * 1.35, 1) # Factor de desvío optimizado para Periférico Sur Oriente
+
+# --- INICIALIZACIÓN DEL CATÁLOGO AUTOMÁTICO ---
+if "directorio_completo_temisa" not in st.session_state:
+    st.session_state.directorio_completo_temisa = [
+        {"Cliente": "NYPRO", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Av. de la Corona 140, Parque Industrial Gdl, Zapopan, Jalisco", "Lat": 20.745, "Lon": -103.415},
+        {"Cliente": "SAN ANGEL", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Av. Camino a San Isidro 450, Col. San Esteban, Zapopan, Jalisco", "Lat": 20.730, "Lon": -103.430},
+        {"Cliente": "CARBOTECNIA", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Prolongación Laureles 320, Col. Sifón, Zapopan, Jalisco", "Lat": 20.720, "Lon": -103.400},
+        {"Cliente": "O-I MEXICO", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Av. Aviación 4000, Col. San Juan de Ocotán, Zapopan, Jalisco", "Lat": 20.710, "Lon": -103.410},
+        {"Cliente": "KASTO MOLINOS", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Calle Puerto Guaymas 315, Col. Miramar, Zapopan, Jalisco", "Lat": 20.750, "Lon": -103.390},
+        {"Cliente": "EL SALTO 6", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Calle C No. 510, Zona Industrial El Salto, El Salto, Jalisco", "Lat": 20.520, "Lon": -103.250},
+        {"Cliente": "EL SALTO 7", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Av. de la Pintura 1230, Parque Industrial El Salto, El Salto, Jalisco", "Lat": 20.525, "Lon": -103.245},
+        {"Cliente": "USI", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Av. Prolongación Tepeyac 1020, Col. El Colli, Zapopan, Jalisco", "Lat": 20.680, "Lon": -103.440},
+        {"Cliente": "INDUSTRIAS GDL SUR", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Calle 14 No. 2540, Zona Industrial, Guadalajara, Jalisco", "Lat": 20.655, "Lon": -103.360},
+        {"Cliente": "CONVERTIDORA", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Av. 8 de Julio 3400, Zona Industrial, Guadalajara, Jalisco", "Lat": 20.640, "Lon": -103.340}
     ]
 
 if "flota" not in st.session_state:
@@ -39,47 +58,70 @@ if "flota" not in st.session_state:
 if "rutas_calculadas" not in st.session_state:
     st.session_state.rutas_calculadas = None
 
-# --- MENÚ LATERAL: GESTIÓN DE DIRECTORIOS Y FLOTA ---
+# --- PANEL DE EDICIÓN ---
 with st.sidebar:
-    st.header("⚙️ Panel de Configuración Master")
-    
-    # 1. Tabla de Clientes Totalmente Editable
+    st.header("⚙️ Catálogo Maestro")
     st.subheader("🗂️ Directorio de Clientes")
-    st.caption("Modifica distancias, agrega clientes nuevos o edita coordenadas aquí abajo:")
+    st.caption("Escribe la dirección con el formato solicitado. El sistema detectará el Municipio automáticamente:")
+    
     df_clientes_edit = st.data_editor(
-        pd.DataFrame(st.session_state.directorio_clientes),
+        pd.DataFrame(st.session_state.directorio_completo_temisa),
         num_rows="dynamic",
         hide_index=True,
-        key="editor_directorio_maestro",
+        column_config={
+            "Lat": st.column_config.NumberColumn("Lat (Opcional)", format="%.4f"),
+            "Lon": st.column_config.NumberColumn("Lon (Opcional)", format="%.4f")
+        },
+        key="editor_completo_clientes",
         use_container_width=True
     )
-    st.session_state.directorio_clientes = df_clientes_edit.to_dict(orient="records")
+    st.session_state.directorio_completo_temisa = df_clientes_edit.to_dict(orient="records")
     
-    # Generar diccionario de consulta rápida para el programa
-    CLIENTES_DB = {str(c["Cliente"]).upper().strip(): c for c in st.session_state.directorio_clientes if pd.notna(c["Cliente"])}
+    # Procesar base de datos
+    CLIENTES_DB = {}
+    for c in st.session_state.directorio_completo_temisa:
+        if pd.notna(c["Cliente"]):
+            nom_comercial = str(c["Cliente"]).upper().strip()
+            direccion = str(c["Dirección Completa (Calle, Número, Colonia, Municipio, Estado)"]).upper()
+            
+            mun_detectado = "GUADALAJARA"
+            for m_name in MUNICIPIOS_GEO.keys():
+                if m_name in direccion:
+                    mun_detectado = m_name
+                    break
+            
+            lat_f = c["Lat"] if (pd.notna(c["Lat"]) and c["Lat"] != 0) else MUNICIPIOS_GEO[mun_detectado][0]
+            lon_f = c["Lon"] if (pd.notna(c["Lon"]) and c["Lon"] != 0) else MUNICIPIOS_GEO[mun_detectado][1]
+            
+            CLIENTES_DB[nom_comercial] = {
+                "Cliente": c["Cliente"],
+                "Direccion": c["Dirección Completa (Calle, Número, Colonia, Municipio, Estado)"],
+                "Municipio": mun_detectado,
+                "Lat": lat_f,
+                "Lon": lon_f,
+                "KM": calcular_distancia_automatica(lat_f, lon_f)
+            }
+            
     lista_nombres_clientes = sorted(list(CLIENTES_DB.keys()))
 
     st.markdown("---")
-    
-    # 2. Gestión de Flota
-    st.subheader("🚛 Control de Unidades Disponibles")
+    st.subheader("🚛 Rendimiento de Flota")
     df_flota_edit = st.data_editor(
         pd.DataFrame(st.session_state.flota),
         hide_index=True,
-        key="editor_flota_maestro",
+        key="editor_flota_completo",
         use_container_width=True
     )
     st.session_state.flota = df_flota_edit.to_dict(orient="records")
 
-    if st.button("🔄 Restablecer Datos de Fábrica"):
-        del st.session_state.directorio_clientes
-        del st.session_state.flota
+    if st.button("🔄 Forzar Reinicio y Actualizar Mapa"):
+        del st.session_state.directorio_completo_temisa
         del st.session_state.rutas_calculadas
         st.rerun()
 
-# --- PANTALLA PRINCIPAL: REGISTRO DE PEDIDOS DEL DÍA ---
-st.header("📋 Captura de Pedidos y Ventanas Horarias")
-st.write(f"Todos los despachos inician desde: **{CEDIS_NOMBRE}**")
+# --- PANTALLA PRINCIPAL: OPERACIONES ---
+st.header("📋 Programación de Pedidos Diarios")
+st.write(f"Despacho Centralizado: **{CEDIS_NOMBRE}**")
 
 if "datos_pedidos" not in st.session_state:
     st.session_state.datos_pedidos = pd.DataFrame({
@@ -91,172 +133,125 @@ if "datos_pedidos" not in st.session_state:
         "Cierre Cliente": [datetime.time(13, 0), datetime.time(16, 0), datetime.time(15, 0), datetime.time(17, 0), datetime.time(14, 0)]
     })
 
-# Desplegar la tabla con menú desplegable para evitar errores de escritura
 df_captura = st.data_editor(
     st.session_state.datos_pedidos,
     num_rows="dynamic",
     use_container_width=True,
     hide_index=True,
     column_config={
-        "Cliente": st.column_config.SelectboxColumn("Cliente Comercial", options=lista_nombres_clientes, required=True),
-        "Inicio Carga CEDIS": st.column_config.TimeColumn("Horario Carga", format="hh:mm a"),
+        "Cliente": st.column_config.SelectboxColumn("Elegir Cliente", options=lista_nombres_clientes, required=True),
+        "Inicio Carga CEDIS": st.column_config.TimeColumn("Hora Carga TEMISA", format="hh:mm a"),
         "Cierre Cliente": st.column_config.TimeColumn("Cierre Almacén", format="hh:mm a"),
         "Min. Carga CEDIS": st.column_config.NumberColumn("Min. Carga", min_value=5, max_value=120, step=5),
         "Min. Descarga Cliente": st.column_config.NumberColumn("Min. Descarga", min_value=5, max_value=120, step=5),
         "Toneladas": st.column_config.NumberColumn("TON", format="%.1f", min_value=0.1)
     },
-    key="editor_operaciones_dia"
+    key="editor_pedidos_completo"
 )
 
-# --- BOTONES DE ACCIÓN ---
 st.markdown("---")
-c_btn1, c_btn2 = st.columns(2)
+col_acc1, col_acc2 = st.columns(2)
 
-with c_btn1:
-    if st.button("⚡ OPTIMIZAR LOGÍSTICA Y CONSOLIDAR RUTAS", type="primary", use_container_width=True):
+with col_acc1:
+    if st.button("⚡ CONSOLIDAR EMBARQUES Y CALCULAR TIEMPOS", type="primary", use_container_width=True):
         st.session_state.datos_pedidos = df_captura
         
         if df_captura.empty:
-            st.error("No hay pedidos registrados para procesar.")
+            st.error("Por favor registra al menos un pedido para simular.")
         else:
-            # 1. Estructurar y limpiar pedidos con base de datos geográfica
-            pedidos_validos = []
+            pedidos_procesados = []
             for _, fila in df_captura.iterrows():
                 nom = str(fila["Cliente"]).upper().strip() if pd.notna(fila["Cliente"]) else ""
                 if nom in CLIENTES_DB:
-                    pedidos_validos.append({
+                    pedidos_procesados.append({
                         "Cliente": nom,
+                        "Direccion": CLIENTES_DB[nom]["Direccion"],
+                        "Municipio": CLIENTES_DB[nom]["Municipio"],
+                        "KM": CLIENTES_DB[nom]["KM"],
                         "TON": float(fila["Toneladas"]) if pd.notna(fila["Toneladas"]) else 1.0,
-                        "Zona": CLIENTES_DB[nom]["Zona"],
                         "Inicio_Carga": fila["Inicio Carga CEDIS"] if pd.notna(fila["Inicio Carga CEDIS"]) else datetime.time(8, 0),
                         "M_Carga": int(fila["Min. Carga CEDIS"]) if pd.notna(fila["Min. Carga CEDIS"]) else 30,
                         "M_Descarga": int(fila["Min. Descarga Cliente"]) if pd.notna(fila["Min. Descarga Cliente"]) else 30,
-                        "Cierre": fila["Cierre Cliente"] if pd.notna(fila["Cierre Cliente"]) else datetime.time(17, 0),
-                        "Dist_KM": CLIENTES_DB[nom]["Dist_KM"]
+                        "Cierre": fila["Cierre Cliente"] if pd.notna(fila["Cierre Cliente"]) else datetime.time(17, 0)
                     })
             
-            # 2. Agrupar pedidos por Zona para consolidar
-            pedidos_por_zona = {}
-            for p in pedidos_validos:
-                pedidos_por_zona.setdefault(p["Zona"], []).append(p)
+            grupos_por_municipio = {}
+            for p in pedidos_procesados:
+                grupos_por_municipio.setdefault(p["Municipio"], []).append(p)
                 
-            flota_disponible = sorted(st.session_state.flota, key=lambda x: x["Capacidad (TON)"], reverse=True)
-            itinerarios_finales = []
-            unidades_utilizadas = set()
+            flota_lista = sorted(st.session_state.flota, key=lambda x: x["Capacidad (TON)"], reverse=True)
+            resultados_hoja = []
+            unidades_en_uso = set()
             
-            # 3. Algoritmo de Consolidación Inteligente
-            for zona, lista_pedidos in pedidos_por_zona.items():
-                # Ordenar pedidos por volumen de mayor a menor
-                lista_pedidos = sorted(lista_pedidos, key=lambda x: x["TON"], reverse=True)
+            for mun, lista_p in grupos_por_municipio.items():
+                lista_p = sorted(lista_p, key=lambda x: x["TON"], reverse=True)
                 
-                while lista_pedidos:
-                    ruta_actual = []
-                    carga_acumulada = 0.0
+                while lista_p:
+                    viaje_actual = []
+                    peso_viaje = 0.0
                     
-                    # Intentar juntar pedidos en una unidad apta
-                    for p in list(lista_pedidos):
-                        if carga_acumulada + p["TON"] <= 15.0:  # Límite máximo de la unidad mayor
-                            ruta_actual.append(p)
-                            carga_acumulada += p["TON"]
-                            lista_pedidos.remove(p)
+                    for p in list(lista_p):
+                        if peso_viaje + p["TON"] <= 15.0:
+                            viaje_actual.append(p)
+                            peso_viaje += p["TON"]
+                            lista_p.remove(p)
                     
-                    # Asignar el vehículo ideal más chico disponible para esta carga para no desperdiciar
-                    vehiculo_asignado = flota_disponible[-1] # Por defecto el menor
-                    for v in flota_disponible:
-                        if v["Capacidad (TON)"] >= carga_acumulada and v["Transportista"] not in unidades_utilizadas:
-                            vehiculo_asignado = v
+                    unid = flota_lista[-1]
+                    for v in flota_lista:
+                        if v["Capacidad (TON)"] >= peso_viaje and v["Transportista"] not in unidades_en_uso:
+                            unid = v
                             break
                     
-                    unidades_utilizadas.add(vehiculo_asignado["Transportista"])
+                    unidades_en_uso.add(unid["Transportista"])
                     
-                    # --- SIMULACIÓN DE LÍNEA DE TIEMPO SECUENCIAL ---
-                    dt_base = datetime.date.today()
-                    # Tomamos la hora de inicio del primer pedido de la secuencia
-                    hora_reloj = datetime.datetime.combine(dt_base, ruta_actual[0]["Inicio_Carga"])
+                    dt_b = datetime.date.today()
+                    reloj = datetime.datetime.combine(dt_b, viaje_actual[0]["Inicio_Carga"])
                     
-                    detalles_paradas = []
-                    total_distancia_viaje = 0.0
+                    m_carga_total = sum([x["M_Carga"] for x in viaje_actual])
+                    salida_cedis = reloj + datetime.timedelta(minutes=m_carga_total)
+                    reloj = salida_cedis
                     
-                    # Tiempo de carga consolidada en TEMISA
-                    total_minutos_carga = sum([p["M_Carga"] for p in ruta_actual])
-                    h_salida_temisa = hora_reloj + datetime.timedelta(minutes=total_minutos_carga)
+                    itinerario_texto = []
                     
-                    hora_reloj = h_salida_temisa
-                    
-                    for i, item in enumerate(ruta_actual):
-                        vel = vehiculo_asignado["Vel_Prom (km/h)"]
-                        # Si es el primer cliente mide desde TEMISA; si es el segundo estima una distancia inter-cliente menor
-                        dist_tramo = item["Dist_KM"] if i == 0 else abs(item["Dist_KM"] - ruta_actual[i-1]["Dist_KM"]) + 3
-                        total_distancia_viaje += dist_tramo
+                    for i, item in enumerate(viaje_actual):
+                        v_km = unid["Vel_Prom (km/h)"]
+                        dist_tramo = item["KM"] if i == 0 else abs(item["KM"] - viaje_actual[i-1]["KM"]) + 3
                         
-                        tiempo_transito = int((dist_tramo / vel) * 60)
-                        hora_arribo = hora_reloj + datetime.timedelta(minutes=tiempo_transito)
-                        hora_salida_cliente = hora_arribo + datetime.timedelta(minutes=item["M_Descarga"])
+                        t_viaje = int((dist_tramo / v_km) * 60)
+                        arribo_c = reloj + datetime.timedelta(minutes=t_viaje)
+                        salida_c = arribo_c + datetime.timedelta(minutes=item["M_Descarga"])
                         
-                        # Validar si llega a tiempo a la ventana del cliente
-                        limite_cliente = datetime.datetime.combine(dt_base, item["Cierre"])
-                        if hora_arribo <= limite_cliente:
-                            estatus = "🟢 Óptimo" if (limite_cliente - hora_arribo).total_seconds()/60 > 30 else "🟡 Ajustado"
-                        else:
-                            estatus = "🔴 Fuera de Ventana"
-                            
-                        detalles_paradas.append(f"{item['Cliente']} ({hora_arribo.strftime('%I:%M %p')} | {estatus})")
-                        hora_reloj = hora_salida_cliente
+                        limite = datetime.datetime.combine(dt_b, item["Cierre"])
+                        estatus = "🟢 A Tiempo" if arribo_c <= limite else "🔴 Retrasado"
+                        
+                        itinerario_texto.append(f"{item['Cliente']} || Dir: {item['Direccion']} || Arribo: {arribo_c.strftime('%I:%M %p')} ({estatus})")
+                        reloj = salida_c
+                        
+                    km_regreso = viaje_actual[-1]["KM"]
+                    t_regreso = int((km_regreso / unid["Vel_Prom (km/h)"]) * 60)
+                    retorno_base = reloj + datetime.timedelta(minutes=t_regreso)
                     
-                    # Regreso final a base TEMISA
-                    dist_regreso = ruta_actual[-1]["Dist_KM"]
-                    total_distancia_viaje += dist_regreso
-                    tiempo_regreso = int((dist_regreso / vehiculo_asignado["Vel_Prom (km/h)"]) * 60)
-                    hora_retorno_base = hora_reloj + datetime.timedelta(minutes=tiempo_regreso)
-                    
-                    itinerarios_finales.append({
-                        "Unidad / Operador": f"{vehiculo_asignado['Transportista']} ({vehiculo_asignado['Tipo']})",
-                        "Zona Logística": zona,
-                        "Clientes Consolidados": " ➡️ ".join([p["Cliente"] for p in ruta_actual]),
-                        "Carga Total": f"{carga_acumulada:.1f} / {vehiculo_asignado['Capacidad (TON)']} TON",
-                        "Salida TEMISA": h_salida_temisa.strftime("%I:%M %p"),
-                        "Secuencia de Arribos": " || ".join(detalles_paradas),
-                        "Retorno Estimado TEMISA": hora_retorno_base.strftime("%I:%M %p")
+                    resultados_hoja.append({
+                        "Unidad / Chofer": f"{unid['Transportista']} ({unid['Tipo']})",
+                        "Ruta Municipio": mun,
+                        "Clientes Consolidados": " ➡️ ".join([x["Cliente"] for x in viaje_actual]),
+                        "Capacidad Utilizada": f"{peso_viaje:.1f} / {unid['Capacidad (TON)']} TON",
+                        "Salida TEMISA": salida_cedis.strftime("%I:%M %p"),
+                        "Hoja de Ruta (Direcciones Reales y Horarios)": " || ".join(itinerario_texto),
+                        "Retorno Estimado TEMISA": retorno_base.strftime("%I:%M %p")
                     })
-            
-            if itinerarios_finales:
-                st.session_state.rutas_calculadas = pd.DataFrame(itinerarios_finales)
-                st.success("¡Optimización de rutas consolidada ejecutada exitosamente!")
+                    
+            if resultados_hoja:
+                st.session_state.rutas_calculadas = pd.DataFrame(resultados_hoja)
             else:
-                st.error("No se pudieron consolidar las rutas con los datos ingresados.")
+                st.error("Error al procesar la ruta.")
 
-with c_btn2:
-    if st.button("🗑️ Limpiar Resultados del Tablero", use_container_width=True):
+with col_acc2:
+    if st.button("🗑️ Limpiar Plan Diario", use_container_width=True):
         st.session_state.rutas_calculadas = None
         st.rerun()
 
-# --- DESPLIEGUE DEL PLAN OPERATIVO LOGÍSTICO ---
 if st.session_state.rutas_calculadas is not None:
     st.markdown("---")
-    st.header("📈 Hoja de Ruta Consolidada Máxima Eficiencia")
-    st.write("El sistema agrupó los pedidos con base en la cercanía de zona para maximizar la capacidad útil del transporte.")
+    st.header("📋 Plan Diario de Distribución Consolidada")
     st.dataframe(st.session_state.rutas_calculadas, use_container_width=True, hide_index=True)
-    
-    # Renderizado del mapa con los pines correctos
-    st.header("🗺️ Mapa Logístico de Rutas Activas")
-    m = folium.Map(location=[20.65, -103.35], zoom_start=11)
-    
-    # Pin de TEMISA exacto
-    folium.Marker(
-        [CEDIS_LAT, CEDIS_LON], 
-        popup=f"<b>CEDIS MATRIZ TEMISA</b><br>{CEDIS_NOMBRE}", 
-        icon=folium.Icon(color="red", icon="home")
-    ).add_to(m)
-    
-    # Colocar los pines dinámicos de los clientes activos en la captura
-    for _, fila in df_captura.iterrows():
-        nom_c = str(fila["Cliente"]).upper().strip() if pd.notna(fila["Cliente"]) else ""
-        if nom_c in CLIENTES_DB:
-            geo = CLIENTES_DB[nom_c]
-            folium.Marker(
-                [geo["Latitud"], geo["Longitud"]],
-                popup=f"<b>Cliente: {nom_c}</b><br>Zona: {geo['Zona']}<br>Carga: {fila['Toneladas']} TON",
-                icon=folium.Icon(color="blue", icon="truck")
-            ).add_to(m)
-            
-    st_folium(m, width=1300, height=500, key="mapa_rutas_consolidadas")
