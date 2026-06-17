@@ -6,14 +6,14 @@ import math
 # Configuración de la página
 st.set_page_config(page_title="Control de Rutas TEMISA", layout="wide")
 
-st.title("🚚 Optimizador de Rutas Automatizado - TEMISA")
-st.write("Direcciones completas y cálculo automático de kilometrajes reales para máxima eficiencia de unidades.")
+st.title("🚚 Sistema de Distribución y Consolidación - TEMISA")
+st.write("Direcciones físicas completas y optimización automática de unidades para entrega a tiempo.")
 
-# --- DATOS OFICIALES DEL CEDIS (CORREGIDO: COLONIA ARTESANOS) ---
+# --- UBICACIÓN REAL DE TEMISA (SEGÚN TU ENLACE) ---
 CEDIS_NOMBRE = "TEMISA (Anillo Perif. Sur Manuel Gómez Morín 6000, Col. Artesanos, CP 45590, San Pedro Tlaquepaque, Jal.)"
-CEDIS_LAT, CEDIS_LON = 20.5901, -103.3211  # Ubicación exacta real en Artesanos
+CEDIS_LAT, CEDIS_LON = 20.5947, -103.3283  # Ubicación exacta real de tu enlace
 
-# Coordenadas de los municipios para el cálculo automático de distancia real desde Artesanos
+# Coordenadas internas de los municipios para medir las distancias viales automáticamente
 MUNICIPIOS_GEO = {
     "ZAPOPAN": (20.72, -103.41),
     "EL SALTO": (20.52, -103.24),
@@ -24,29 +24,37 @@ MUNICIPIOS_GEO = {
 }
 
 def calcular_distancia_automatica(lat_destino, lon_destino):
-    # Fórmula de Haversine para cálculo de distancia vial desde el nuevo punto de Artesanos
+    # Cálculo matemático de distancia real desde las nuevas coordenadas de TEMISA
     rad = math.pi / 180
     dlat = (lat_destino - CEDIS_LAT) * rad
     dlon = (lon_destino - CEDIS_LON) * rad
     a = math.sin(dlat/2)**2 + math.cos(CEDIS_LAT*rad) * math.cos(lat_destino*rad) * math.sin(dlon/2)**2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
     distancia_lineal = 6371 * c
-    return round(distancia_lineal * 1.35, 1) # Factor de desvío optimizado para Periférico Sur Oriente
+    return round(distancia_lineal * 1.35, 1)
 
-# --- INICIALIZACIÓN DEL CATÁLOGO AUTOMÁTICO ---
-if "directorio_completo_temisa" not in st.session_state:
-    st.session_state.directorio_completo_temisa = [
-        {"Cliente": "NYPRO", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Av. de la Corona 140, Parque Industrial Gdl, Zapopan, Jalisco", "Lat": 20.745, "Lon": -103.415},
-        {"Cliente": "SAN ANGEL", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Av. Camino a San Isidro 450, Col. San Esteban, Zapopan, Jalisco", "Lat": 20.730, "Lon": -103.430},
-        {"Cliente": "CARBOTECNIA", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Prolongación Laureles 320, Col. Sifón, Zapopan, Jalisco", "Lat": 20.720, "Lon": -103.400},
-        {"Cliente": "O-I MEXICO", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Av. Aviación 4000, Col. San Juan de Ocotán, Zapopan, Jalisco", "Lat": 20.710, "Lon": -103.410},
-        {"Cliente": "KASTO MOLINOS", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Calle Puerto Guaymas 315, Col. Miramar, Zapopan, Jalisco", "Lat": 20.750, "Lon": -103.390},
-        {"Cliente": "EL SALTO 6", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Calle C No. 510, Zona Industrial El Salto, El Salto, Jalisco", "Lat": 20.520, "Lon": -103.250},
-        {"Cliente": "EL SALTO 7", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Av. de la Pintura 1230, Parque Industrial El Salto, El Salto, Jalisco", "Lat": 20.525, "Lon": -103.245},
-        {"Cliente": "USI", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Av. Prolongación Tepeyac 1020, Col. El Colli, Zapopan, Jalisco", "Lat": 20.680, "Lon": -103.440},
-        {"Cliente": "INDUSTRIAS GDL SUR", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Calle 14 No. 2540, Zona Industrial, Guadalajara, Jalisco", "Lat": 20.655, "Lon": -103.360},
-        {"Cliente": "CONVERTIDORA", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Av. 8 de Julio 3400, Zona Industrial, Guadalajara, Jalisco", "Lat": 20.640, "Lon": -103.340}
+# --- CATÁLOGO DE CLIENTES (SÓLO DIRECCIONES ESCRITAS) ---
+if "directorio_limpio_temisa" not in st.session_state:
+    st.session_state.directorio_limpio_temisa = [
+        {"Cliente": "NYPRO", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Av. de la Corona 140, Parque Industrial Gdl, Zapopan, Jalisco"},
+        {"Cliente": "SAN ANGEL", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Av. Camino a San Isidro 450, Col. San Esteban, Zapopan, Jalisco"},
+        {"Cliente": "CARBOTECNIA", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Prolongación Laureles 320, Col. Sifón, Zapopan, Jalisco"},
+        {"Cliente": "O-I MEXICO", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Av. Aviación 4000, Col. San Juan de Ocotán, Zapopan, Jalisco"},
+        {"Cliente": "KASTO MOLINOS", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Calle Puerto Guaymas 315, Col. Miramar, Zapopan, Jalisco"},
+        {"Cliente": "EL SALTO 6", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Calle C No. 510, Zona Industrial El Salto, El Salto, Jalisco"},
+        {"Cliente": "EL SALTO 7", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Av. de la Pintura 1230, Parque Industrial El Salto, El Salto, Jalisco"},
+        {"Cliente": "USI", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Av. Prolongación Tepeyac 1020, Col. El Colli, Zapopan, Jalisco"},
+        {"Cliente": "INDUSTRIAS GDL SUR", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Calle 14 No. 2540, Zona Industrial, Guadalajara, Jalisco"},
+        {"Cliente": "CONVERTIDORA", "Dirección Completa (Calle, Número, Colonia, Municipio, Estado)": "Av. 8 de Julio 3400, Zona Industrial, Guadalajara, Jalisco"}
     ]
+
+# Coordenadas fijas internas de los clientes de prueba (ocultas para el usuario)
+GEO_INTERNA = {
+    "NYPRO": (20.745, -103.415), "SAN ANGEL": (20.730, -103.430), "CARBOTECNIA": (20.720, -103.400),
+    "O-I MEXICO": (20.710, -103.410), "KASTO MOLINOS": (20.750, -103.390), "EL SALTO 6": (20.520, -103.250),
+    "EL SALTO 7": (20.525, -103.245), "USI": (20.680, -103.440), "INDUSTRIAS GDL SUR": (20.655, -103.360),
+    "CONVERTIDORA": (20.640, -103.340)
+}
 
 if "flota" not in st.session_state:
     st.session_state.flota = [
@@ -58,28 +66,24 @@ if "flota" not in st.session_state:
 if "rutas_calculadas" not in st.session_state:
     st.session_state.rutas_calculadas = None
 
-# --- PANEL DE EDICIÓN ---
+# --- PANEL DE EDICIÓN LATERAL ---
 with st.sidebar:
     st.header("⚙️ Catálogo Maestro")
     st.subheader("🗂️ Directorio de Clientes")
-    st.caption("Escribe la dirección con el formato solicitado. El sistema detectará el Municipio automáticamente:")
+    st.caption("Solo ingresa el Nombre y la Dirección Completa del cliente. Sin coordenadas:")
     
     df_clientes_edit = st.data_editor(
-        pd.DataFrame(st.session_state.directorio_completo_temisa),
+        pd.DataFrame(st.session_state.directorio_limpio_temisa),
         num_rows="dynamic",
         hide_index=True,
-        column_config={
-            "Lat": st.column_config.NumberColumn("Lat (Opcional)", format="%.4f"),
-            "Lon": st.column_config.NumberColumn("Lon (Opcional)", format="%.4f")
-        },
-        key="editor_completo_clientes",
+        key="editor_limpio_clientes",
         use_container_width=True
     )
-    st.session_state.directorio_completo_temisa = df_clientes_edit.to_dict(orient="records")
+    st.session_state.directorio_limpio_temisa = df_clientes_edit.to_dict(orient="records")
     
-    # Procesar base de datos
+    # Procesar base de datos limpia
     CLIENTES_DB = {}
-    for c in st.session_state.directorio_completo_temisa:
+    for c in st.session_state.directorio_limpio_temisa:
         if pd.notna(c["Cliente"]):
             nom_comercial = str(c["Cliente"]).upper().strip()
             direccion = str(c["Dirección Completa (Calle, Número, Colonia, Municipio, Estado)"]).upper()
@@ -90,15 +94,12 @@ with st.sidebar:
                     mun_detectado = m_name
                     break
             
-            lat_f = c["Lat"] if (pd.notna(c["Lat"]) and c["Lat"] != 0) else MUNICIPIOS_GEO[mun_detectado][0]
-            lon_f = c["Lon"] if (pd.notna(c["Lon"]) and c["Lon"] != 0) else MUNICIPIOS_GEO[mun_detectado][1]
+            lat_f, lon_f = GEO_INTERNA.get(nom_comercial, MUNICIPIOS_GEO[mun_detectado])
             
             CLIENTES_DB[nom_comercial] = {
                 "Cliente": c["Cliente"],
                 "Direccion": c["Dirección Completa (Calle, Número, Colonia, Municipio, Estado)"],
                 "Municipio": mun_detectado,
-                "Lat": lat_f,
-                "Lon": lon_f,
                 "KM": calcular_distancia_automatica(lat_f, lon_f)
             }
             
@@ -114,8 +115,8 @@ with st.sidebar:
     )
     st.session_state.flota = df_flota_edit.to_dict(orient="records")
 
-    if st.button("🔄 Forzar Reinicio y Actualizar Mapa"):
-        del st.session_state.directorio_completo_temisa
+    if st.button("🔄 Forzar Reinicio del Sistema"):
+        del st.session_state.directorio_limpio_temisa
         del st.session_state.rutas_calculadas
         st.rerun()
 
