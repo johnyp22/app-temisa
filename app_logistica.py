@@ -6,6 +6,14 @@ st.set_page_config(page_title="Planeador Logístico", page_icon="🚚", layout="
 
 ZONAS = ["Guadalajara", "Zapopan", "Tlaquepaque", "Tonalá", "El Salto", "Tlajomulco", "Otro"]
 
+PRIORIDADES = {
+    1: "Crítica",
+    2: "Alta",
+    3: "Normal",
+    4: "Baja",
+    5: "Muy baja"
+}
+
 TIEMPOS_PLANTA = {
     "Guadalajara": 40,
     "Zapopan": 70,
@@ -22,26 +30,31 @@ TIEMPOS_ZONA = {
     ("Guadalajara", "Tonalá"): 45,
     ("Guadalajara", "El Salto"): 60,
     ("Guadalajara", "Tlajomulco"): 65,
+
     ("Zapopan", "Guadalajara"): 45,
     ("Zapopan", "Tlaquepaque"): 75,
     ("Zapopan", "Tonalá"): 80,
     ("Zapopan", "El Salto"): 90,
     ("Zapopan", "Tlajomulco"): 80,
+
     ("Tlaquepaque", "Guadalajara"): 35,
     ("Tlaquepaque", "Zapopan"): 75,
     ("Tlaquepaque", "Tonalá"): 35,
     ("Tlaquepaque", "El Salto"): 50,
     ("Tlaquepaque", "Tlajomulco"): 45,
+
     ("Tonalá", "Guadalajara"): 45,
     ("Tonalá", "Zapopan"): 80,
     ("Tonalá", "Tlaquepaque"): 35,
     ("Tonalá", "El Salto"): 45,
     ("Tonalá", "Tlajomulco"): 70,
+
     ("El Salto", "Guadalajara"): 60,
     ("El Salto", "Zapopan"): 90,
     ("El Salto", "Tlaquepaque"): 50,
     ("El Salto", "Tonalá"): 45,
     ("El Salto", "Tlajomulco"): 55,
+
     ("Tlajomulco", "Guadalajara"): 65,
     ("Tlajomulco", "Zapopan"): 80,
     ("Tlajomulco", "Tlaquepaque"): 45,
@@ -53,11 +66,11 @@ TIEMPOS_ZONA = {
 def init_state():
     if "clientes" not in st.session_state:
         st.session_state.clientes = pd.DataFrame([
-            ["Cliente Zapopan", "Zapopan", "Av. Aviación 5051, Zapopan", "45136", 30, 30, "13:00", True],
-            ["Cliente El Salto", "El Salto", "Parque Industrial El Salto", "45680", 45, 60, "14:00", True],
-            ["Cliente Tonalá", "Tonalá", "Av. Tonaltecas, Tonalá", "45400", 35, 40, "15:00", True],
-            ["Cliente Guadalajara", "Guadalajara", "Zona Industrial Guadalajara", "44940", 25, 25, "12:30", True],
-            ["Cliente Tlaquepaque", "Tlaquepaque", "Álamo Industrial", "45593", 30, 30, "16:00", True],
+            ["Cliente Zapopan", "Zapopan", "Av. Aviación 5051, Zapopan", "45136", 30, 30, "13:00", 3, True],
+            ["Cliente El Salto", "El Salto", "Parque Industrial El Salto", "45680", 45, 60, "14:00", 2, True],
+            ["Cliente Tonalá", "Tonalá", "Av. Tonaltecas, Tonalá", "45400", 35, 40, "15:00", 3, True],
+            ["Cliente Guadalajara", "Guadalajara", "Zona Industrial Guadalajara", "44940", 25, 25, "12:30", 1, True],
+            ["Cliente Tlaquepaque", "Tlaquepaque", "Álamo Industrial", "45593", 30, 30, "16:00", 4, True],
         ], columns=[
             "Cliente",
             "Zona",
@@ -66,6 +79,7 @@ def init_state():
             "Descarga min default",
             "Carga min default",
             "Ventana fin default",
+            "Prioridad cliente default",
             "Activo"
         ])
 
@@ -93,7 +107,8 @@ def init_state():
             "Ventana fin",
             "Carga min",
             "Descarga min",
-            "Prioridad"
+            "Prioridad",
+            "Entrega obligatoria hoy"
         ])
 
     if "restricciones" not in st.session_state:
@@ -135,6 +150,28 @@ def transportista_permitido(cliente, transportista, restricciones):
     return bloqueos.empty
 
 
+def preparar_programacion(programacion):
+    df = programacion.copy()
+
+    df["Prioridad"] = pd.to_numeric(df["Prioridad"], errors="coerce").fillna(3).astype(int)
+    df["Prioridad"] = df["Prioridad"].clip(1, 5)
+
+    df["Prioridad texto"] = df["Prioridad"].map(PRIORIDADES)
+
+    df["Obligatoria orden"] = df["Entrega obligatoria hoy"].apply(
+        lambda x: 0 if x is True else 1
+    )
+
+    df["Ventana orden"] = df["Ventana fin"].apply(lambda x: h(x))
+
+    df = df.sort_values(
+        by=["Obligatoria orden", "Prioridad", "Ventana orden"],
+        ascending=[True, True, True]
+    )
+
+    return df
+
+
 def calcular_ruta(entregas, unidad):
     carga_total_min = int(entregas["Carga min"].sum())
 
@@ -147,7 +184,7 @@ def calcular_ruta(entregas, unidad):
     detalle = []
     cumple_ruta = True
 
-    entregas = entregas.sort_values(["Prioridad", "Ventana fin"])
+    entregas = preparar_programacion(entregas)
 
     for _, e in entregas.iterrows():
         min_traslado = traslado(zona_actual, e["Zona"])
@@ -165,6 +202,9 @@ def calcular_ruta(entregas, unidad):
             "Cliente": e["Cliente"],
             "Zona": e["Zona"],
             "Toneladas": e["Toneladas"],
+            "Prioridad": e["Prioridad"],
+            "Prioridad texto": PRIORIDADES.get(int(e["Prioridad"]), "Normal"),
+            "Entrega obligatoria hoy": e["Entrega obligatoria hoy"],
             "Carga min": e["Carga min"],
             "Traslado min": min_traslado,
             "Llegada estimada": llegada.strftime("%H:%M"),
@@ -184,7 +224,7 @@ def calcular_ruta(entregas, unidad):
 
 
 def planear(programacion, unidades, restricciones):
-    pendientes = programacion.copy().sort_values(["Prioridad", "Ventana fin"])
+    pendientes = preparar_programacion(programacion)
     pendientes["Asignada"] = False
 
     rutas = []
@@ -224,12 +264,15 @@ def planear(programacion, unidades, restricciones):
             clientes_consolidados = " + ".join(entregas_ruta["Cliente"].tolist())
             llenado = carga / capacidad * 100
 
+            obligatorias = int(entregas_ruta["Entrega obligatoria hoy"].sum())
+
             rutas.append({
                 "Ruta": ruta_id,
                 "Transportista": unidad["Transportista"],
                 "Vehículo": unidad["Vehículo"],
                 "Clientes consolidados": clientes_consolidados,
                 "Número clientes": len(entregas_ruta),
+                "Entregas obligatorias": obligatorias,
                 "Toneladas vehículo": round(carga, 2),
                 "Capacidad t": capacidad,
                 "Llenado %": round(llenado, 1),
@@ -267,6 +310,9 @@ def planear(programacion, unidades, restricciones):
             "Cliente": cliente,
             "Toneladas": e["Toneladas"],
             "Zona": e["Zona"],
+            "Prioridad": e["Prioridad"],
+            "Prioridad texto": PRIORIDADES.get(int(e["Prioridad"]), "Normal"),
+            "Entrega obligatoria hoy": e["Entrega obligatoria hoy"],
             "Motivo probable": motivo_final
         })
 
@@ -276,14 +322,15 @@ def planear(programacion, unidades, restricciones):
 init_state()
 
 st.title("Planeador Logístico Diario 🚚")
-st.caption("Clientes, transportistas, restricciones, programación diaria, carga por pedido, consolidación, llenado y OTIF proyectado.")
+st.caption("Clientes, transportistas, restricciones, prioridad 1-5, entregas obligatorias, carga por pedido, consolidación, llenado y OTIF proyectado.")
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "1. Banco de clientes",
     "2. Transportistas",
     "3. Restricciones",
     "4. Programación del día",
-    "5. Plan de rutas"
+    "5. Plan de rutas",
+    "6. Ayuda prioridad"
 ])
 
 with tab1:
@@ -297,6 +344,12 @@ with tab1:
             "Zona": st.column_config.SelectboxColumn("Zona", options=ZONAS),
             "Descarga min default": st.column_config.NumberColumn("Descarga min default", min_value=0, step=5),
             "Carga min default": st.column_config.NumberColumn("Carga min default", min_value=0, step=5),
+            "Prioridad cliente default": st.column_config.NumberColumn(
+                "Prioridad cliente default",
+                min_value=1,
+                max_value=5,
+                step=1
+            ),
             "Activo": st.column_config.CheckboxColumn("Activo")
         }
     )
@@ -319,7 +372,7 @@ with tab3:
     st.subheader("Restricciones cliente - transportista")
 
     st.write(
-        "Aquí bloqueas combinaciones que tú sabes que no deben ocurrir: "
+        "Aquí bloqueas combinaciones que no deben ocurrir: "
         "no cabe la unidad, proveedor castigado, chofer no disponible, cliente no acepta ese transporte, etc."
     )
 
@@ -367,7 +420,8 @@ with tab4:
                 "Ventana fin": base["Ventana fin default"],
                 "Carga min": base["Carga min default"],
                 "Descarga min": base["Descarga min default"],
-                "Prioridad": 2
+                "Prioridad": int(base["Prioridad cliente default"]),
+                "Entrega obligatoria hoy": False
             })
 
         st.session_state.programacion = pd.DataFrame(filas)
@@ -381,7 +435,14 @@ with tab4:
             "Toneladas": st.column_config.NumberColumn("Toneladas", min_value=0.1, step=0.5),
             "Carga min": st.column_config.NumberColumn("Carga min", min_value=0, step=5),
             "Descarga min": st.column_config.NumberColumn("Descarga min", min_value=0, step=5),
-            "Prioridad": st.column_config.NumberColumn("Prioridad", min_value=1, max_value=5, step=1),
+            "Prioridad": st.column_config.NumberColumn(
+                "Prioridad",
+                min_value=1,
+                max_value=5,
+                step=1,
+                help="1 = Crítica, 2 = Alta, 3 = Normal, 4 = Baja, 5 = Muy baja"
+            ),
+            "Entrega obligatoria hoy": st.column_config.CheckboxColumn("Entrega obligatoria hoy")
         }
     )
 
@@ -420,11 +481,20 @@ with tab5:
             entregas_ok = len(detalle[detalle["Cumple"] == "Sí"]) if not detalle.empty else 0
             otif = entregas_ok / total_entregas * 100 if total_entregas > 0 else 0
 
-            col1, col2, col3, col4 = st.columns(4)
+            obligatorias_total = int(st.session_state.programacion["Entrega obligatoria hoy"].sum())
+            obligatorias_ok = len(
+                detalle[
+                    (detalle["Entrega obligatoria hoy"] == True)
+                    & (detalle["Cumple"] == "Sí")
+                ]
+            ) if not detalle.empty else 0
+
+            col1, col2, col3, col4, col5 = st.columns(5)
             col1.metric("Entregas", total_entregas)
             col2.metric("Entregas a tiempo", entregas_ok)
             col3.metric("OTIF proyectado", f"{otif:.1f}%")
-            col4.metric("Rutas", len(rutas))
+            col4.metric("Obligatorias", obligatorias_total)
+            col5.metric("Obligatorias OK", obligatorias_ok)
 
             st.subheader("Detalle por ruta / cliente")
 
@@ -435,6 +505,9 @@ with tab5:
                 "Cliente",
                 "Zona",
                 "Toneladas",
+                "Prioridad",
+                "Prioridad texto",
+                "Entrega obligatoria hoy",
                 "Carga min",
                 "Traslado min",
                 "Llegada estimada",
@@ -478,5 +551,28 @@ with tab5:
             st.error("Entregas no asignadas.")
             st.dataframe(no_asignadas, use_container_width=True)
 
+with tab6:
+    st.subheader("Cómo usar prioridad")
+
+    prioridad_df = pd.DataFrame([
+        [1, "Crítica", "Cliente estratégico, riesgo de paro, exportación urgente, penalización fuerte"],
+        [2, "Alta", "Pedido comprometido para hoy o cliente importante"],
+        [3, "Normal", "Pedido estándar"],
+        [4, "Baja", "Puede moverse un día sin mucho daño"],
+        [5, "Muy baja", "Reabasto, consignación o entrega flexible"],
+    ], columns=["Prioridad", "Significado", "Ejemplo"])
+
+    st.dataframe(prioridad_df, use_container_width=True)
+
+    st.info(
+        "El sistema ordena primero las entregas obligatorias, luego prioridad 1 a 5, "
+        "y después las ventanas de entrega más tempranas."
+    )
+
+    st.warning(
+        "Esto NO es optimización matemática exacta. Es una heurística práctica. "
+        "Mejora la decisión, pero no garantiza el óptimo global."
+    )
+
 st.markdown("---")
-st.caption("Versión sin Google Maps. Usa tiempos estándar por zona y restricciones manuales cliente-transportista.")
+st.caption("Versión sin Google Maps. Usa tiempos estándar por zona, prioridades, entregas obligatorias y restricciones manuales.")
