@@ -7,54 +7,143 @@ st.set_page_config(page_title="Planeador Logístico", page_icon="🚚", layout="
 ZONAS = ["Guadalajara", "Zapopan", "Tlaquepaque", "Tonalá", "El Salto", "Tlajomulco", "Otro"]
 
 TIEMPOS_PLANTA = {
-    "Guadalajara": 40, "Zapopan": 70, "Tlaquepaque": 30,
-    "Tonalá": 45, "El Salto": 55, "Tlajomulco": 60, "Otro": 75
+    "Guadalajara": 40,
+    "Zapopan": 70,
+    "Tlaquepaque": 30,
+    "Tonalá": 45,
+    "El Salto": 55,
+    "Tlajomulco": 60,
+    "Otro": 75
 }
 
 TIEMPOS_ZONA = {
-    ("Guadalajara", "Zapopan"): 45, ("Guadalajara", "Tlaquepaque"): 35, ("Guadalajara", "Tonalá"): 45, ("Guadalajara", "El Salto"): 60, ("Guadalajara", "Tlajomulco"): 65,
-    ("Zapopan", "Guadalajara"): 45, ("Zapopan", "Tlaquepaque"): 75, ("Zapopan", "Tonalá"): 80, ("Zapopan", "El Salto"): 90, ("Zapopan", "Tlajomulco"): 80,
-    ("Tlaquepaque", "Guadalajara"): 35, ("Tlaquepaque", "Zapopan"): 75, ("Tlaquepaque", "Tonalá"): 35, ("Tlaquepaque", "El Salto"): 50, ("Tlaquepaque", "Tlajomulco"): 45,
-    ("Tonalá", "Guadalajara"): 45, ("Tonalá", "Zapopan"): 80, ("Tonalá", "Tlaquepaque"): 35, ("Tonalá", "El Salto"): 45, ("Tonalá", "Tlajomulco"): 70,
-    ("El Salto", "Guadalajara"): 60, ("El Salto", "Zapopan"): 90, ("El Salto", "Tlaquepaque"): 50, ("El Salto", "Tonalá"): 45, ("El Salto", "Tlajomulco"): 55,
-    ("Tlajomulco", "Guadalajara"): 65, ("Tlajomulco", "Zapopan"): 80, ("Tlajomulco", "Tlaquepaque"): 45, ("Tlajomulco", "Tonalá"): 70, ("Tlajomulco", "El Salto"): 55,
+    ("Guadalajara", "Zapopan"): 45,
+    ("Guadalajara", "Tlaquepaque"): 35,
+    ("Guadalajara", "Tonalá"): 45,
+    ("Guadalajara", "El Salto"): 60,
+    ("Guadalajara", "Tlajomulco"): 65,
+    ("Zapopan", "Guadalajara"): 45,
+    ("Zapopan", "Tlaquepaque"): 75,
+    ("Zapopan", "Tonalá"): 80,
+    ("Zapopan", "El Salto"): 90,
+    ("Zapopan", "Tlajomulco"): 80,
+    ("Tlaquepaque", "Guadalajara"): 35,
+    ("Tlaquepaque", "Zapopan"): 75,
+    ("Tlaquepaque", "Tonalá"): 35,
+    ("Tlaquepaque", "El Salto"): 50,
+    ("Tlaquepaque", "Tlajomulco"): 45,
+    ("Tonalá", "Guadalajara"): 45,
+    ("Tonalá", "Zapopan"): 80,
+    ("Tonalá", "Tlaquepaque"): 35,
+    ("Tonalá", "El Salto"): 45,
+    ("Tonalá", "Tlajomulco"): 70,
+    ("El Salto", "Guadalajara"): 60,
+    ("El Salto", "Zapopan"): 90,
+    ("El Salto", "Tlaquepaque"): 50,
+    ("El Salto", "Tonalá"): 45,
+    ("El Salto", "Tlajomulco"): 55,
+    ("Tlajomulco", "Guadalajara"): 65,
+    ("Tlajomulco", "Zapopan"): 80,
+    ("Tlajomulco", "Tlaquepaque"): 45,
+    ("Tlajomulco", "Tonalá"): 70,
+    ("Tlajomulco", "El Salto"): 55,
 }
+
 
 def init_state():
     if "clientes" not in st.session_state:
         st.session_state.clientes = pd.DataFrame([
-            ["Cliente Zapopan", "Zapopan", "Av. Aviación 5051, Zapopan", "45136", 30, "13:00", True],
-            ["Cliente El Salto", "El Salto", "Parque Industrial El Salto", "45680", 45, "14:00", True],
-            ["Cliente Tonalá", "Tonalá", "Av. Tonaltecas, Tonalá", "45400", 35, "15:00", True],
-            ["Cliente Guadalajara", "Guadalajara", "Zona Industrial Guadalajara", "44940", 25, "12:30", True],
-            ["Cliente Tlaquepaque", "Tlaquepaque", "Álamo Industrial", "45593", 30, "16:00", True],
-        ], columns=["Cliente", "Zona", "Dirección", "CP", "Descarga min", "Ventana fin default", "Activo"])
+            ["Cliente Zapopan", "Zapopan", "Av. Aviación 5051, Zapopan", "45136", 30, 30, "13:00", True],
+            ["Cliente El Salto", "El Salto", "Parque Industrial El Salto", "45680", 45, 60, "14:00", True],
+            ["Cliente Tonalá", "Tonalá", "Av. Tonaltecas, Tonalá", "45400", 35, 40, "15:00", True],
+            ["Cliente Guadalajara", "Guadalajara", "Zona Industrial Guadalajara", "44940", 25, 25, "12:30", True],
+            ["Cliente Tlaquepaque", "Tlaquepaque", "Álamo Industrial", "45593", 30, 30, "16:00", True],
+        ], columns=[
+            "Cliente",
+            "Zona",
+            "Dirección",
+            "CP",
+            "Descarga min default",
+            "Carga min default",
+            "Ventana fin default",
+            "Activo"
+        ])
 
     if "transportistas" not in st.session_state:
         st.session_state.transportistas = pd.DataFrame([
             ["Proveedor A", "Rabón 8 t", 8.0, 35.0, "08:30", True],
             ["Proveedor B", "Torton 14 t", 14.0, 32.0, "08:30", True],
             ["Proveedor C", "Tráiler 25 t", 25.0, 28.0, "08:30", True],
-        ], columns=["Transportista", "Vehículo", "Capacidad t", "Costo estimado km", "Hora salida", "Activo"])
+        ], columns=[
+            "Transportista",
+            "Vehículo",
+            "Capacidad t",
+            "Costo estimado km",
+            "Hora disponible",
+            "Activo"
+        ])
 
     if "programacion" not in st.session_state:
         st.session_state.programacion = pd.DataFrame(columns=[
-            "Cliente", "Zona", "Dirección", "CP", "Toneladas", "Ventana fin", "Descarga min", "Prioridad"
+            "Cliente",
+            "Zona",
+            "Dirección",
+            "CP",
+            "Toneladas",
+            "Ventana fin",
+            "Carga min",
+            "Descarga min",
+            "Prioridad"
         ])
+
+    if "restricciones" not in st.session_state:
+        st.session_state.restricciones = pd.DataFrame([
+            ["Cliente Zapopan", "Proveedor C", "No cabe tráiler por la zona", True],
+            ["Cliente Tonalá", "Proveedor A", "Chofer no disponible / restricción operativa", False],
+        ], columns=[
+            "Cliente",
+            "Transportista bloqueado",
+            "Motivo",
+            "Activa"
+        ])
+
 
 def h(hora):
     return datetime.strptime(str(hora), "%H:%M")
 
+
 def traslado(origen, destino):
     if origen == "PLANTA":
         return TIEMPOS_PLANTA.get(destino, 75)
+
     if origen == destino:
         return 20
+
     return TIEMPOS_ZONA.get((origen, destino), 75)
 
-def calcular_ruta(entregas, unidad, tiempo_carga):
-    hora_actual = h(unidad["Hora salida"]) + timedelta(minutes=int(tiempo_carga))
+
+def transportista_permitido(cliente, transportista, restricciones):
+    if restricciones.empty:
+        return True
+
+    bloqueos = restricciones[
+        (restricciones["Cliente"] == cliente)
+        & (restricciones["Transportista bloqueado"] == transportista)
+        & (restricciones["Activa"] == True)
+    ]
+
+    return bloqueos.empty
+
+
+def calcular_ruta(entregas, unidad):
+    carga_total_min = int(entregas["Carga min"].sum())
+
+    hora_disponible = h(unidad["Hora disponible"])
+    hora_salida_real = hora_disponible + timedelta(minutes=carga_total_min)
+
+    hora_actual = hora_salida_real
     zona_actual = "PLANTA"
+
     detalle = []
     cumple_ruta = True
 
@@ -64,6 +153,7 @@ def calcular_ruta(entregas, unidad, tiempo_carga):
         min_traslado = traslado(zona_actual, e["Zona"])
         llegada = hora_actual + timedelta(minutes=min_traslado)
         limite = h(e["Ventana fin"])
+
         cumple = llegada <= limite
 
         if not cumple:
@@ -75,6 +165,8 @@ def calcular_ruta(entregas, unidad, tiempo_carga):
             "Cliente": e["Cliente"],
             "Zona": e["Zona"],
             "Toneladas": e["Toneladas"],
+            "Carga min": e["Carga min"],
+            "Traslado min": min_traslado,
             "Llegada estimada": llegada.strftime("%H:%M"),
             "Ventana fin": e["Ventana fin"],
             "Descarga min": e["Descarga min"],
@@ -85,25 +177,36 @@ def calcular_ruta(entregas, unidad, tiempo_carga):
         hora_actual = salida_cliente
         zona_actual = e["Zona"]
 
-    return detalle, cumple_ruta, hora_actual.strftime("%H:%M")
+    regreso_planta = traslado(zona_actual, "Tlaquepaque")
+    hora_regreso = hora_actual + timedelta(minutes=regreso_planta)
 
-def planear(programacion, unidades, tiempo_carga):
+    return detalle, cumple_ruta, hora_salida_real.strftime("%H:%M"), carga_total_min, hora_regreso.strftime("%H:%M")
+
+
+def planear(programacion, unidades, restricciones):
     pendientes = programacion.copy().sort_values(["Prioridad", "Ventana fin"])
     pendientes["Asignada"] = False
 
     rutas = []
     detalles = []
+    no_asignadas_motivos = []
 
-    for i, unidad in unidades.iterrows():
+    for _, unidad in unidades.iterrows():
         capacidad = float(unidad["Capacidad t"])
-        carga = 0
+        carga = 0.0
         idxs = []
 
         for idx, entrega in pendientes.iterrows():
             if pendientes.at[idx, "Asignada"]:
                 continue
 
+            cliente = entrega["Cliente"]
+            transportista = unidad["Transportista"]
             ton = float(entrega["Toneladas"])
+
+            if not transportista_permitido(cliente, transportista, restricciones):
+                continue
+
             if carga + ton <= capacidad:
                 idxs.append(idx)
                 carga += ton
@@ -111,22 +214,28 @@ def planear(programacion, unidades, tiempo_carga):
 
         if idxs:
             entregas_ruta = pendientes.loc[idxs].copy()
-            detalle, cumple, regreso = calcular_ruta(entregas_ruta, unidad, tiempo_carga)
+
+            detalle, cumple, salida_real, carga_min_total, regreso = calcular_ruta(
+                entregas_ruta,
+                unidad
+            )
 
             ruta_id = f"Ruta {len(rutas) + 1}"
-            clientes = " + ".join(entregas_ruta["Cliente"].tolist())
+            clientes_consolidados = " + ".join(entregas_ruta["Cliente"].tolist())
             llenado = carga / capacidad * 100
 
             rutas.append({
                 "Ruta": ruta_id,
                 "Transportista": unidad["Transportista"],
                 "Vehículo": unidad["Vehículo"],
-                "Clientes consolidados": clientes,
+                "Clientes consolidados": clientes_consolidados,
                 "Número clientes": len(entregas_ruta),
                 "Toneladas vehículo": round(carga, 2),
                 "Capacidad t": capacidad,
                 "Llenado %": round(llenado, 1),
-                "Hora salida": unidad["Hora salida"],
+                "Hora disponible": unidad["Hora disponible"],
+                "Carga total min": carga_min_total,
+                "Hora salida real": salida_real,
                 "Hora regreso estimada": regreso,
                 "Cumple ruta": "Sí" if cumple else "No"
             })
@@ -138,18 +247,43 @@ def planear(programacion, unidades, tiempo_carga):
                 detalles.append(d)
 
     no_asignadas = pendientes[pendientes["Asignada"] == False].copy()
-    return pd.DataFrame(rutas), pd.DataFrame(detalles), no_asignadas
+
+    for _, e in no_asignadas.iterrows():
+        cliente = e["Cliente"]
+        motivos = []
+
+        for _, u in unidades.iterrows():
+            permitido = transportista_permitido(cliente, u["Transportista"], restricciones)
+            cabe = float(e["Toneladas"]) <= float(u["Capacidad t"])
+
+            if not permitido:
+                motivos.append(f"bloqueado con {u['Transportista']}")
+            elif not cabe:
+                motivos.append(f"no cabe en {u['Vehículo']}")
+
+        motivo_final = "; ".join(motivos) if motivos else "sin capacidad disponible por consolidación previa"
+
+        no_asignadas_motivos.append({
+            "Cliente": cliente,
+            "Toneladas": e["Toneladas"],
+            "Zona": e["Zona"],
+            "Motivo probable": motivo_final
+        })
+
+    return pd.DataFrame(rutas), pd.DataFrame(detalles), pd.DataFrame(no_asignadas_motivos)
+
 
 init_state()
 
 st.title("Planeador Logístico Diario 🚚")
-st.caption("Catálogo de clientes, banco de transportistas, programación diaria, consolidación, llenado y OTIF proyectado.")
+st.caption("Clientes, transportistas, restricciones, programación diaria, carga por pedido, consolidación, llenado y OTIF proyectado.")
 
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "1. Banco de clientes",
     "2. Transportistas",
-    "3. Programación del día",
-    "4. Plan de rutas"
+    "3. Restricciones",
+    "4. Programación del día",
+    "5. Plan de rutas"
 ])
 
 with tab1:
@@ -161,7 +295,8 @@ with tab1:
         use_container_width=True,
         column_config={
             "Zona": st.column_config.SelectboxColumn("Zona", options=ZONAS),
-            "Descarga min": st.column_config.NumberColumn("Descarga min", min_value=0, step=5),
+            "Descarga min default": st.column_config.NumberColumn("Descarga min default", min_value=0, step=5),
+            "Carga min default": st.column_config.NumberColumn("Carga min default", min_value=0, step=5),
             "Activo": st.column_config.CheckboxColumn("Activo")
         }
     )
@@ -181,16 +316,48 @@ with tab2:
     )
 
 with tab3:
+    st.subheader("Restricciones cliente - transportista")
+
+    st.write(
+        "Aquí bloqueas combinaciones que tú sabes que no deben ocurrir: "
+        "no cabe la unidad, proveedor castigado, chofer no disponible, cliente no acepta ese transporte, etc."
+    )
+
+    clientes_lista = st.session_state.clientes["Cliente"].dropna().unique().tolist()
+    transportistas_lista = st.session_state.transportistas["Transportista"].dropna().unique().tolist()
+
+    st.session_state.restricciones = st.data_editor(
+        st.session_state.restricciones,
+        num_rows="dynamic",
+        use_container_width=True,
+        column_config={
+            "Cliente": st.column_config.SelectboxColumn("Cliente", options=clientes_lista),
+            "Transportista bloqueado": st.column_config.SelectboxColumn(
+                "Transportista bloqueado",
+                options=transportistas_lista
+            ),
+            "Activa": st.column_config.CheckboxColumn("Activa")
+        }
+    )
+
+with tab4:
     st.subheader("Selecciona clientes desde el banco y arma la matriz del día")
 
-    clientes_activos = st.session_state.clientes[st.session_state.clientes["Activo"] == True]
-    seleccion = st.multiselect("Clientes a programar", clientes_activos["Cliente"].tolist())
+    clientes_activos = st.session_state.clientes[
+        st.session_state.clientes["Activo"] == True
+    ].copy()
+
+    seleccion = st.multiselect(
+        "Clientes a programar",
+        clientes_activos["Cliente"].tolist()
+    )
 
     if st.button("Cargar clientes seleccionados a programación"):
         filas = []
 
         for cliente in seleccion:
             base = clientes_activos[clientes_activos["Cliente"] == cliente].iloc[0]
+
             filas.append({
                 "Cliente": base["Cliente"],
                 "Zona": base["Zona"],
@@ -198,7 +365,8 @@ with tab3:
                 "CP": base["CP"],
                 "Toneladas": 1.0,
                 "Ventana fin": base["Ventana fin default"],
-                "Descarga min": base["Descarga min"],
+                "Carga min": base["Carga min default"],
+                "Descarga min": base["Descarga min default"],
                 "Prioridad": 2
             })
 
@@ -211,15 +379,14 @@ with tab3:
         column_config={
             "Zona": st.column_config.SelectboxColumn("Zona", options=ZONAS),
             "Toneladas": st.column_config.NumberColumn("Toneladas", min_value=0.1, step=0.5),
+            "Carga min": st.column_config.NumberColumn("Carga min", min_value=0, step=5),
             "Descarga min": st.column_config.NumberColumn("Descarga min", min_value=0, step=5),
             "Prioridad": st.column_config.NumberColumn("Prioridad", min_value=1, max_value=5, step=1),
         }
     )
 
-with tab4:
+with tab5:
     st.subheader("Plan de rutas consolidadas")
-
-    tiempo_carga = st.number_input("Tiempo de carga en planta, min", 0, 240, 30, 5)
 
     unidades_activas = st.session_state.transportistas[
         st.session_state.transportistas["Activo"] == True
@@ -234,10 +401,14 @@ with tab4:
             st.error("No hay transportistas activos.")
             st.stop()
 
+        restricciones_activas = st.session_state.restricciones[
+            st.session_state.restricciones["Activa"] == True
+        ].copy()
+
         rutas, detalle, no_asignadas = planear(
             st.session_state.programacion,
             unidades_activas,
-            tiempo_carga
+            restricciones_activas
         )
 
         st.subheader("Resumen por vehículo")
@@ -246,8 +417,8 @@ with tab4:
             st.dataframe(rutas, use_container_width=True)
 
             total_entregas = len(st.session_state.programacion)
-            entregas_ok = len(detalle[detalle["Cumple"] == "Sí"])
-            otif = entregas_ok / total_entregas * 100
+            entregas_ok = len(detalle[detalle["Cumple"] == "Sí"]) if not detalle.empty else 0
+            otif = entregas_ok / total_entregas * 100 if total_entregas > 0 else 0
 
             col1, col2, col3, col4 = st.columns(4)
             col1.metric("Entregas", total_entregas)
@@ -258,9 +429,19 @@ with tab4:
             st.subheader("Detalle por ruta / cliente")
 
             orden_cols = [
-                "Ruta", "Transportista", "Vehículo", "Cliente", "Zona",
-                "Toneladas", "Llegada estimada", "Ventana fin",
-                "Descarga min", "Salida cliente", "Cumple"
+                "Ruta",
+                "Transportista",
+                "Vehículo",
+                "Cliente",
+                "Zona",
+                "Toneladas",
+                "Carga min",
+                "Traslado min",
+                "Llegada estimada",
+                "Ventana fin",
+                "Descarga min",
+                "Salida cliente",
+                "Cumple"
             ]
 
             st.dataframe(detalle[orden_cols], use_container_width=True)
@@ -272,7 +453,17 @@ with tab4:
 
             if not bajas.empty:
                 st.warning("Vehículos con llenado menor a 70%.")
-                st.dataframe(bajas[["Ruta", "Vehículo", "Toneladas vehículo", "Capacidad t", "Llenado %"]], use_container_width=True)
+                st.dataframe(
+                    bajas[[
+                        "Ruta",
+                        "Transportista",
+                        "Vehículo",
+                        "Toneladas vehículo",
+                        "Capacidad t",
+                        "Llenado %"
+                    ]],
+                    use_container_width=True
+                )
 
             if not incumplen.empty:
                 st.error("Entregas con riesgo de incumplimiento.")
@@ -280,9 +471,12 @@ with tab4:
             else:
                 st.success("No hay incumplimientos proyectados por ventana.")
 
+        else:
+            st.error("No se pudo generar ninguna ruta.")
+
         if not no_asignadas.empty:
-            st.error("Entregas no asignadas por falta de capacidad.")
+            st.error("Entregas no asignadas.")
             st.dataframe(no_asignadas, use_container_width=True)
 
 st.markdown("---")
-st.caption("Versión sin Google Maps. Usa tiempos estándar por zona. El siguiente paso sería agregar costos, km estimados, citas y persistencia en archivo CSV.")
+st.caption("Versión sin Google Maps. Usa tiempos estándar por zona y restricciones manuales cliente-transportista.")
